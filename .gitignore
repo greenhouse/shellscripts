@@ -1,0 +1,22 @@
+## misc OSx
+*~
+.#.*
+*.DS_Store
+
+## xcode
+*.xcworkspace
+
+## large file types
+#stream/
+
+## ESX repositories
+_esx_repos/
+
+## python
+__pycache__/
+
+
+
+
+
+
