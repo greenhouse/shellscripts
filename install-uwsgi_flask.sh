@@ -12,8 +12,8 @@ python3.7 -m pip install --upgrade pip
 python3.7 -m pip install flask
 
 # install flask w/ python2
-sudo apt-get install python-pip
-python2 -m pip install --upgrade pip
-python2 -m pip install flask
+#sudo apt-get install python-pip
+#python2 -m pip install --upgrade pip
+#python2 -m pip install flask
 
 
