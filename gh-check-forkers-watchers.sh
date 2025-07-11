@@ -1,17 +1,16 @@
 #!/bin/bash
 
-echo ""
-echo "_START INFO_"
-echo ""
-echo "#==================================#"
-echo "Usage: $0 <github-username>"
-echo "Requirements: gh CLI, jq, curl"
-echo "Requirements: gh auth login for <github-username> organization (step #5 above|below)"
-echo "This script lists all repositories in the <github-username> organization, including those forked by others."
-echo "It shows the visibility of each repository and who has forked them."
-echo "It also lists all repositories with their visibility and who is watching them."
-echo "#==================================#"
-echo "
+DESCR="
+#==================================#
+Usage: $0 <github-username>
+Requirements: gh CLI, jq, curl
+Requirements: gh auth login for <github-username> organization (step #5 above|below)
+This script lists all repositories in the <github-username> organization, including those forked by others.
+It shows the visibility of each repository and who has forked them.
+It also lists all repositories with their visibility and who is watching them.
+#==================================#"
+
+SETUP="
 #==================================#
 # GitHub CLI tool 'gh' w/ ssh access
 #==================================#
@@ -65,17 +64,17 @@ $ gh auth login
  - gh config set -h github.com git_protocol ssh
  ✓ Configured git protocol
  ✓ Logged in as <github-username>
- $"
-echo "#==================================#"
+ $
+#==================================#"
+
 echo ""
-echo "#==================================#"
-echo "Usage: $0 <github-username>"
-echo "Requirements: gh CLI, jq, curl"
-echo "Requirements: gh auth login for <github-username> organization (step #5 above|below)"
-echo "This script lists all repositories in the <github-username> organization, including those forked by others."
-echo "It shows the visibility of each repository and who has forked them."
-echo "It also lists all repositories with their visibility and who is watching them."
-echo "#==================================#"
+echo "_START INFO_"
+echo ""
+echo "$DESCR"
+echo ""
+echo "$SETUP"
+echo ""
+echo "$DESCR"
 echo ""
 echo "_END INFO_"
 echo ""

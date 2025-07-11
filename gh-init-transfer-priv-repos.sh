@@ -1,17 +1,16 @@
 #!/bin/bash
 
-echo ""
-echo "_START INFO_"
-echo ""
-echo "#==================================#"
-echo "Usage: $0 <github-username> <target_github-username>"
-echo "Requirements: gh CLI"
-echo "Requirements: gh auth login for <github-username> organization (step #5 above|below)"
-echo "This script initilizes a transfer all PRIVATE repositories in the <github-username> organization"
-echo "It shows the visibility of each initialized PRIVATAE repository transfer"
-echo "The <target_github-username> for transfer needs to manually accept the transfer on GitHub.com within 24 hours"
-echo "#==================================#"
-echo "
+DESCR="
+#==================================#
+Usage: $0 <github-username> <target_github-username>
+Requirements: gh CLI
+Requirements: gh auth login for <github-username> organization (step #5 above|below)
+This script initilizes a transfer all PRIVATE repositories in the <github-username> organization
+It shows the visibility of each initialized PRIVATAE repository transfer
+The <target_github-username> for transfer needs to manually accept the transfer on GitHub.com within 24 hours
+#==================================#"
+
+SETUP="
 #==================================#
 # GitHub CLI tool 'gh' w/ ssh access
 #==================================#
@@ -57,17 +56,17 @@ $ gh auth login
  - gh config set -h github.com git_protocol ssh
  ✓ Configured git protocol
  ✓ Logged in as <github-username>
- $"
-echo "#==================================#"
+ $
+#==================================#"
+
 echo ""
-echo "#==================================#"
-echo "Usage: $0 <github-username> <target_github-username>"
-echo "Requirements: gh CLI"
-echo "Requirements: gh auth login for <github-username> organization (step #5 above|below)"
-echo "This script initilizes a transfer all PRIVATE repositories in the <github-username> organization"
-echo "It shows the visibility of each initialized PRIVATAE repository transfer"
-echo "The <target_github-username> for transfer needs to manually accept the transfer on GitHub.com within 24 hours"
-echo "#==================================#"
+echo "_START INFO_"
+echo ""
+echo "$DESCR"
+echo ""
+echo "$SETUP"
+echo ""
+echo "$DESCR"
 echo ""
 echo "_END INFO_"
 echo ""
