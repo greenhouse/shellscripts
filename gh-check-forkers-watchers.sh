@@ -30,13 +30,14 @@ $ ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 	# - OR - 
 $ ssh-keygen -t ed25519 -C "your_email@example.com"
 
-## 2) update/add-to ~/.ssh/config
+## 2.1) add generated private key file to ~/.ssh/
+## 2.2) update ~/.ssh/config with ...
 host github.com
      AddKeysToAgent yes
      UseKeychain yes
      IdentityFile ~/.ssh/<file-name>
 
-## 3) add key generated public key to GitHub.com account (from <file-name>.pub)
+## 3) add generated public key to GitHub.com account (data in <file-name>.pub)
 # ref: https://github.com/settings/keys
 #  note: select key type: 'authentication key'
 
