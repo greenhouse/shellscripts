@@ -65,6 +65,7 @@ $ gh auth login
 #==================================#"
 
 echo ""
+echo "**************************************************************************"
 echo "_START INFO_"
 echo ""
 echo "$DESCR"
@@ -74,6 +75,7 @@ echo ""
 echo "$DESCR"
 echo ""
 echo "_END INFO_"
+echo "**************************************************************************"
 echo ""
 
 #!/bin/bash
@@ -93,14 +95,14 @@ NEW_EMAIL="$4"
 
 # Ensure gh is authenticated
 # if ! gh auth status > /dev/null 2>&1; then
-#     echo "Error: Please authenticate with GitHub CLI using 'gh auth login'"
+#     echo "*** ERROR: Please authenticate with GitHub CLI using 'gh auth login'"
 #     exit 1
 # fi
 
 # Ensure git filter-repo is installed
 if ! command -v git-filter-repo > /dev/null 2>&1; then
     echo ""
-    echo "Error: git-filter-repo is not installed. Install it with 'brew install git-filter-repo'"
+    echo "*** ERROR: git-filter-repo is not installed. Install it with 'brew install git-filter-repo'"
     echo ""
     exit 1
 fi
@@ -108,17 +110,18 @@ fi
 # Ensure SSH key is loaded (NOTE: this check fails if ssh is added manually to ~/.ssh/config)
 if ! ssh-add -l > /dev/null 2>&1; then
     echo ""
-    echo "*WARNING*: No SSH key loaded. Run 'ssh-add ~/.ssh/id_rsa' or manually config your SSH key in ~~/.ssh/config"
-    echo "Continuing without SSH key loaded... (assuming SSH key is already configured manually)"
+    echo "* WARNING *: No SSH key loaded. Run 'ssh-add ~/.ssh/id_rsa' or manually config your SSH key in ~~/.ssh/config"
+    echo "*  Continuing without SSH key loaded... (assuming SSH key is already configured manually)"
     echo ""
 fi
 
 # Ensure clone directory exists
-mkdir -p "$CLONE_DIR" || { echo "Error: Failed to create directory $CLONE_DIR"; exit 1; }
-echo "*SUCCESSFULLY validate/make dir for clone directory: $CLONE_DIR"
+mkdir -p "$CLONE_DIR" || { echo "*** ERROR: Failed to create directory $CLONE_DIR"; exit 1; }
+echo "* SUCCESSFULLY validate/make dir for clone directory: $CLONE_DIR"
 
 # logout of any existing gh auth session
 echo ""
+echo "**************************************************************************"
 echo "Logging out of any existing GitHub CLI session..."
 gh auth logout
 
@@ -137,106 +140,154 @@ REPOS=()
 
 # List all public repos for the given username and fork them publicly
 echo ""
-echo "Forking public repos FROM $USERNAME publicly and cloning to $CLONE_DIR:"
-gh repo list "$USERNAME" --visibility public --limit 100 --json name --jq '.[] | .name' | while read repo; do
+echo "**************************************************************************"
+echo "*** Forking all public repos FROM $USERNAME and cloning to $CLONE_DIR ***"
+echo "* Then using filter-repo to update commit emails in each cloned repository from $OLD_EMAIL to $NEW_EMAIL"
+echo "* Then renaming remote upstream to origin for the forked repo & setting fetch URL accordingly"
+echo "* Then force-pushing changes for '--all' branches' to the forked repo"
+echo "* Then setting all forked repositories for $USERNAME to private"
+echo "* Then setting all newly created repositories by $YOUR_USERNAME to private"
+echo "**************************************************************************"
+echo ""
+while read repo; do
+  # NOTE: Skip possible empty lines
+  #  because gh repo list is being fed as a file-like input (in 'done' below)
+  [ -z "$repo" ] && continue
 
   # Change to clone directory
-  cd "$CLONE_DIR" || { echo "Error: Failed to change directory to $CLONE_DIR"; exit 1; }
+  cd "$CLONE_DIR" || { echo "*** ERROR: Failed to change directory to $CLONE_DIR"; exit 1; }
   echo ""
-  echo "*SUCCESSFULLY cd to clone dir: $CLONE_DIR"
+  echo "* SUCCESSFULLY cd to clone dir: $CLONE_DIR"
 
   # fork and clone the repo
-  gh repo fork "$USERNAME/$repo" --clone --remote-name origin
-  echo "*SUCCESSFULLY forked & cloned repo $USERNAME/$repo as public to $YOUR_USERNAME/$repo"
-  
-  # Change to repo directory
-  cd "$CLONE_DIR/$repo" || { echo "Failed to cd into $CLONE_DIR/$repo"; continue; }
-  echo "*SUCCESSFULLY cd to repo dir: $CLONE_DIR/$repo (bound to repo: $YOUR_USERNAME/$repo)"
+  if gh repo fork "$USERNAME/$repo" --clone --remote-name origin > /dev/null 2>&1; then
+    echo "* SUCCESSFULLY forked & cloned repo $USERNAME/$repo as public to $YOUR_USERNAME/$repo"
 
-  # Update commit emails (NOTE: auto removes remote origin & adds remote upstream)
-  git filter-repo --email-callback "return email if email != b'$OLD_EMAIL' else b'$NEW_EMAIL'" --force
-  echo "*SUCCESSFULLY updated commit emails for repo $YOUR_USERNAME/$repo from $OLD_EMAIL to $NEW_EMAIL in $repo"
+    # Change to repo directory
+    cd "$CLONE_DIR/$repo" || { echo "** FAILED to cd into $CLONE_DIR/$repo"; continue; }
+    echo "* SUCCESSFULLY cd to repo dir: $CLONE_DIR/$repo (bound to repo: $YOUR_USERNAME/$repo)"
 
-  # rename remote upstream to remote origin for the forked repo & set fetch URL accordingly
-  #  NOTE: required to fix issue w/ filter-repo auto-changing remote origin to upstream
-  #   (ie. ensures remote is set correctly in forked repo)
-  git remote rename upstream origin
-  git remote set-url origin "git@github.com:$YOUR_USERNAME/$repo.git"
-  echo "*SUCCESSFULLY Configured origin remote for $YOUR_USERNAME/$repo"
-  # Debug: Show remotes
-  git remote -v
-  
-  # Force-push changes for '--all' branches' to the forked repo
-  git push origin --all --force
-  echo "*SUCCESSFULLY pushed updated commits to $YOUR_USERNAME/$repo"
+    # Update commit emails (NOTE: auto removes remote origin & adds remote upstream)
+    if git filter-repo --email-callback "return email if email != b'$OLD_EMAIL' else b'$NEW_EMAIL'" --force > /dev/null 2>&1; then
+      echo "* SUCCESSFULLY updated commit emails for repo $YOUR_USERNAME/$repo from $OLD_EMAIL to $NEW_EMAIL"
 
-  # Append repo to array
-  REPOS+=("$repo")  
-  echo "*SUCCESSFULLY appended repo $repo to forked/cloned REPOS array"
-  echo "Current REPOS array: ${REPOS[*]}"
-  echo "Current REPOS array (simple): $REPOS"
-done
+      # rename remote upstream to remote origin for the forked repo & set fetch URL accordingly
+      #  NOTE: required to fix issue w/ filter-repo auto-changing remote origin to upstream
+      #   (ie. ensures remote is set correctly in forked repo)
+      git remote rename upstream origin
+      git remote set-url origin "git@github.com:$YOUR_USERNAME/$repo.git"
+      echo "* SUCCESSFULLY Configured origin remote for $YOUR_USERNAME/$repo"
+      # Debug: Show remotes
+      git remote -v
+      
+      # Force-push changes for '--all' branches' to the forked repo
+      if git push origin --all --force > /dev/null 2>&1; then
+        echo "* SUCCESSFULLY pushed updated commits to $YOUR_USERNAME/$repo"
 
-# gh repo list "$USERNAME" --visibility public --limit 100 --json name --jq '.[] | .name' | while read repo; do
-#   if gh repo fork "$USERNAME/$repo" --clone --remote-name "origin" > /dev/null 2>&1; then
-#     echo "Successfully forked & cloned repo $repo as public"
-#     REPOS+=("$repo")  # Append repo to array
-#     # Change to repo directory
-#     cd "$CLONE_DIR/$repo" || { echo "Failed to cd into $CLONE_DIR/$repo"; continue; }
-#     # Update commit emails
-#     if git filter-repo --email-callback "return email if email != b'$OLD_EMAIL' else b'$NEW_EMAIL'" --force > /dev/null 2>&1; then
-#       echo "Updated commit emails from $OLD_EMAIL to $NEW_EMAIL in $repo"
-#       # Force-push changes to the forked repo
-#       if git push origin --all --force > /dev/null 2>&1; then
-#         echo "Successfully pushed updated commits to $YOUR_USERNAME/$repo"
-#       else
-#         echo "Failed to push updated commits to $YOUR_USERNAME/$repo"
-#       fi
-#     else
-#       echo "Failed to update commit emails in $repo"
-#     fi
-#     # Return to original directory
-#     cd - > /dev/null || { echo "Error: Failed to return to original directory"; exit 1; }
-#   else
-#     echo "Failed to fork & clone repo $repo"
-#   fi
-# done
-
+        # Append repo to array
+        REPOS+=("$repo")  
+        echo "* SUCCESSFULLY appended repo $repo to forked/cloned REPOS array"
+        echo "*  Current REPOS array: ${REPOS[*]}"
+        echo "**************************************************************************"
+      else
+        echo "** FAILED to push updated commits to $YOUR_USERNAME/$repo"
+        echo "**************************************************************************"
+      fi
+    else
+      echo "** FAILED to update commit emails in $repo"
+      echo "**************************************************************************"
+    fi
+  else
+    echo "** FAILED to fork & clone repo $repo"
+    echo "**************************************************************************"
+  fi
+done < <(gh repo list "$USERNAME" --visibility public --limit 100 --json name --jq '.[] | .name')
+  # NOTE: "done < <(gh repo list "$USERNAME" --visibility public --limit 100 --json name --jq '.[] | .name')"
+  #  runs gh repo list and feeds its output as a file-like input to while read, keeping the loop in the parent shell.
+  #  avoids using subshell to feed gh repo list to while loop
+  #  allows the loop to access the REPOS array and other variables defined in the parent shell.
 # Set all forked repositories for <github_username> to private 
 echo ""
-echo "Setting all repos forked FROM user $USERNAME to private..."
-echo "Logging out of github user $YOUR_USERNAME that repos were forked/cloned BY"
+echo "**************************************************************************"
+echo "*** Setting all $USERNAME repos that were forked to private... ***"
+echo "* Logging out of github user $YOUR_USERNAME that repos were forked/cloned BY"
 gh auth logout
-
-echo "Logging in to github user $USERNAME"
+echo ""
+echo "* Logging in to github user $USERNAME"
 gh auth login 
 
 # loop through & set ALL repos to private (note: --limit 100)
-echo "Setting all repos for user $USERNAME to private..."
+echo ""
+echo "* Setting all forked repos for user $USERNAME to private..."
 for repo in $(gh repo list --limit 100 --json name --jq '.[].name'); do
   gh repo edit $USERNAME/$repo --visibility private --accept-visibility-change-consequences
-  echo "*SUCCESSFULLY set $USERNAME/$repo to private"
+  echo "* SUCCESSFULLY set $USERNAME/$repo to private"
 done
 
 # Set all repos forked by YOUR_USERNAME to private 
 echo ""
-echo "Setting all repos forked BY user $YOUR_USERNAME to private..."
-echo "Logging out of github user $USERNAME that repos were forked/cloned FROM"
+echo "**************************************************************************"
+echo "*** Setting all $YOUR_USERNAME repos newly created from the forks to private... ***"
+echo "* Logging out of github user $USERNAME that repos were forked/cloned FROM"
 gh auth logout
-
-echo "Logging in to github user $YOUR_USERNAME"
+echo ""
+echo "* Logging in to github user $YOUR_USERNAME"
 gh auth login 
 
 # loop through & set ALL repos to private (note: --limit 100)
-echo "Setting all forked repos by for user $YOUR_USERNAME to private..."
-echo "Forked repos: ${REPOS[*]}"
-echo "Forked repos: $REPOS"
+echo ""
+echo "** Setting all newly created repos by user $YOUR_USERNAME to private... ***"
+echo "* Forked repos: ${REPOS[*]}"
 for repo in "${REPOS[@]}"; do
   gh repo edit $YOUR_USERNAME/$repo --visibility private --accept-visibility-change-consequences
-  echo "*SUCCESSFULLY set $YOUR_USERNAME/$repo to private"
+  echo "* SUCCESSFULLY set $YOUR_USERNAME/$repo to private"
 done
 
 echo ""
 echo "_END EXE_"
 echo ""
+
+
+## _ TESTING: MAIN FORK LOOP WITHOUT ERROR CHECKING _
+# # List all public repos for the given username and fork them publicly
+# echo ""
+# echo "Forking public repos FROM $USERNAME publicly and cloning to $CLONE_DIR:"
+# gh repo list "$USERNAME" --visibility public --limit 100 --json name --jq '.[] | .name' | while read repo; do
+
+#   # Change to clone directory
+#   cd "$CLONE_DIR" || { echo "*** ERROR: Failed to change directory to $CLONE_DIR"; exit 1; }
+#   echo ""
+#   echo "* SUCCESSFULLY cd to clone dir: $CLONE_DIR"
+
+#   # fork and clone the repo
+#   gh repo fork "$USERNAME/$repo" --clone --remote-name origin
+#   echo "* SUCCESSFULLY forked & cloned repo $USERNAME/$repo as public to $YOUR_USERNAME/$repo"
+  
+#   # Change to repo directory
+#   cd "$CLONE_DIR/$repo" || { echo "** FAILED to cd into $CLONE_DIR/$repo"; continue; }
+#   echo "* SUCCESSFULLY cd to repo dir: $CLONE_DIR/$repo (bound to repo: $YOUR_USERNAME/$repo)"
+
+#   # Update commit emails (NOTE: auto removes remote origin & adds remote upstream)
+#   git filter-repo --email-callback "return email if email != b'$OLD_EMAIL' else b'$NEW_EMAIL'" --force
+#   echo "* SUCCESSFULLY updated commit emails for repo $YOUR_USERNAME/$repo from $OLD_EMAIL to $NEW_EMAIL in $repo"
+
+#   # rename remote upstream to remote origin for the forked repo & set fetch URL accordingly
+#   #  NOTE: required to fix issue w/ filter-repo auto-changing remote origin to upstream
+#   #   (ie. ensures remote is set correctly in forked repo)
+#   git remote rename upstream origin
+#   git remote set-url origin "git@github.com:$YOUR_USERNAME/$repo.git"
+#   echo "* SUCCESSFULLY Configured origin remote for $YOUR_USERNAME/$repo"
+#   # Debug: Show remotes
+#   git remote -v
+  
+#   # Force-push changes for '--all' branches' to the forked repo
+#   git push origin --all --force
+#   echo "* SUCCESSFULLY pushed updated commits to $YOUR_USERNAME/$repo"
+
+#   # Append repo to array
+#   REPOS+=("$repo")  
+#   echo "* SUCCESSFULLY appended repo $repo to forked/cloned REPOS array"
+#   echo "Current REPOS array: ${REPOS[*]}"
+# done
+## _ TESTING: MAIN FORK LOOP WITHOUT ERROR CHECKING _
 
